@@ -175,7 +175,7 @@ abstract class WC_Gateway_Midtrans_Abstract extends WC_Payment_Gateway {
     $order = new WC_Order( $order_id );
     $params = array(
     'transaction_details' => array(
-      'order_id' => $order_id,
+      'order_id' => WC_Midtrans_Utils::get_midtrans_order_id( $order_id, $order ),
       'gross_amount' => 0,
     ));
 
@@ -328,6 +328,19 @@ abstract class WC_Gateway_Midtrans_Abstract extends WC_Payment_Gateway {
       );
     } catch (Exception $e) { }
 
+    // Don't send empty string values of customer_details, Snap API will reject some of it
+    // e.g: empty email result in error `customer_details.email format is invalid`
+    foreach ( array( 'first_name', 'last_name', 'email', 'phone' ) as $field ) {
+      if ( isset( $params['customer_details'][$field] ) && trim( (string) $params['customer_details'][$field] ) === '' ) {
+        unset( $params['customer_details'][$field] );
+      }
+      foreach ( array( 'billing_address', 'shipping_address' ) as $address ) {
+        if ( isset( $params['customer_details'][$address][$field] ) && trim( (string) $params['customer_details'][$address][$field] ) === '' ) {
+          unset( $params['customer_details'][$address][$field] );
+        }
+      }
+    }
+
     return $params;
   }
 
@@ -359,7 +372,7 @@ abstract class WC_Gateway_Midtrans_Abstract extends WC_Payment_Gateway {
    * @return WC_Order_Refund|WP_Error
    */
   public function midtrans_refund( $order_id, $refund_amount, $refund_reason, $isFullRefund = false ) {
-    $order_id = WC_Midtrans_Utils::check_and_restore_original_order_id($order_id);
+    $order_id = WC_Midtrans_Utils::get_wc_order_id($order_id);
     $order  = wc_get_order( $order_id );
     if( ! is_a( $order, 'WC_Order') ) {
       return;
@@ -423,7 +436,11 @@ abstract class WC_Gateway_Midtrans_Abstract extends WC_Payment_Gateway {
   public function set_finish_url_user_cookies( $order ) {
     $cookie_name = 'wc_midtrans_last_order_finish_url';
     $order_finish_url = $order->get_checkout_order_received_url();
-    setcookie($cookie_name, $order_finish_url);
+    if ( headers_sent() ) {
+      return;
+    }
+    // WC helper set the cookie with proper path, domain, `secure` & `httponly` flag
+    wc_setcookie( $cookie_name, $order_finish_url, 0, is_ssl(), true );
   }
 
   /**
@@ -461,7 +478,7 @@ abstract class WC_Gateway_Midtrans_Abstract extends WC_Payment_Gateway {
           // image is absolute url, external, don't prefix.
           $image_url = $image_file_name;
         }
-        $image_tag .= '<img src="'.$image_url.'" alt="Midtrans" style="max-height: 2em; max-width: 4em; background-color: #ffffffdd; padding: 0.2em 0.3em; border-radius: 0.3em; border: 0.5px solid #ccccccdd;"/> ';
+        $image_tag .= '<img src="'.esc_url($image_url).'" alt="Midtrans" style="max-height: 2em; max-width: 4em; background-color: #ffffffdd; padding: 0.2em 0.3em; border-radius: 0.3em; border: 0.5px solid #ccccccdd;"/> ';
       }
     }
 

@@ -7,45 +7,45 @@
 
 // reference: https://www.cloudways.com/blog/creating-custom-page-template-in-wordpress/
 
-/**
- * Handle a custom '_mt_payment_transaction_id' query var to get orders with the '_mt_payment_transaction_id' meta.
- * @param array $query - Args for WP_Query.
- * @param array $query_vars - Query vars from WC_Order_Query.
- * @return array modified $query
- */
-function midtrans_handle_custom_query_var( $query, $query_vars ) {
-	if ( ! empty( $query_vars['_mt_payment_transaction_id'] ) ) {
-		$query['meta_query'][] = array(
-			'key' => '_mt_payment_transaction_id',
-			'value' => esc_attr( $query_vars['_mt_payment_transaction_id'] ),
-		);
-	}
-
-	return $query;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
-add_filter( 'woocommerce_order_data_store_cpt_get_orders_query', 'midtrans_handle_custom_query_var', 10, 2 );
+
+// Values from request params are untrusted (controlled by user). Those are only used to decide
+// which message will be displayed, never printed to the page and never used to alter order status.
+$midtrans_notification = new stdClass();
+$midtrans_notification->transaction_status = 'not found';
+$midtrans_notification->payment_type = '';
 
 try {
-	if(isset($_GET['id'])){ // handler for BCA_Klikpay finish redirect
-		$trx_id = sanitize_text_field($_GET['id']);
-		// Get order from transaction_id meta data
-		$order = wc_get_orders( array( '_mt_payment_transaction_id' => $trx_id ) );
-		$plugin_id = isset($order) && $order[0] ? $order[0]->get_payment_method() : 'midtrans';
-		$midtrans_notification = WC_Midtrans_API::getMidtransStatus($trx_id, $plugin_id);
-	}else if(isset($_POST['response'])){ // handler for CIMB CLICKS finish redirect
-		$sanitizedPost = [];
-		$sanitizedPost['response'] = sanitize_text_field($_POST['response']);
-		$response = preg_replace('/\\\\/', '', $sanitizedPost['response']);		
-		$midtrans_notification = json_decode($response);	
+	if(isset($_GET['id']) && is_string($_GET['id'])){ // handler for BCA_Klikpay finish redirect
+		$trx_id = sanitize_text_field(wp_unslash($_GET['id']));
+		if(WC_Midtrans_Utils::is_valid_midtrans_id($trx_id)){
+			// Get order from transaction_id meta data
+			$order = WC_Midtrans_Utils::get_order_by_transaction_id($trx_id);
+			$plugin_id = $order ? $order->get_payment_method() : 'midtrans';
+			if(strpos((string) $plugin_id, 'midtrans') !== 0){
+				$plugin_id = 'midtrans';
+			}
+			$status_response = WC_Midtrans_API::getMidtransStatus($trx_id, $plugin_id);
+			if(is_object($status_response) && isset($status_response->transaction_status)){
+				$midtrans_notification->transaction_status = strtolower((string) $status_response->transaction_status);
+				$midtrans_notification->payment_type = 
+					isset($status_response->payment_type) ? (string) $status_response->payment_type : '';
+			}
+		}
+	}else if(isset($_POST['response']) && is_string($_POST['response'])){ // handler for CIMB CLICKS finish redirect
+		$response = json_decode(sanitize_text_field(wp_unslash($_POST['response'])));
+		if(is_object($response) && isset($response->transaction_status) && is_string($response->transaction_status)){
+			$midtrans_notification->transaction_status = strtolower($response->transaction_status);
+			$midtrans_notification->payment_type = 
+				(isset($response->payment_type) && is_string($response->payment_type)) ? $response->payment_type : '';
+		}
 	}
 } catch (Exception $e) {
-	error_log('Failed to do Midtrans Get Status: '.print_r($e,true));
-	$midtrans_notification = new stdClass();
+	WC_Midtrans_Logger::log( 'Failed to do Midtrans Get Status: '.$e->getMessage(), 'midtrans-error' );
 	$midtrans_notification->transaction_status = 'not found';
 }
-
-// OR uncomment this to redirect it to midtrans plugin callback handler
-// echo "loading... <script>window.location = '".get_site_url(null, '/')."?wc-api=WC_Gateway_Midtrans&id=".$_GET['id']."'</script>";
 
 get_header(); // WP Header
 ?>

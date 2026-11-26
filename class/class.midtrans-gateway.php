@@ -131,12 +131,28 @@
         $woocommerce->cart->empty_cart();
         // allow merchant-defined custom filter function to modify snap $params
         $params = apply_filters( 'midtrans_snap_params_main_before_charge', $params );
-        try {
-          $snapResponse = WC_Midtrans_API::createSnapTransactionHandleDuplicate( $order, $params, $this->id );
-        } catch (Exception $e) {
-            $this->setLogError( $e->getMessage() );
-            WC_Midtrans_Utils::json_print_exception( $e, $this );
-          exit();
+        // If this order already have Snap token that is still active for the very same payment
+        // (same amount, items, payment methods), reuse it instead of creating another transaction.
+        // Prevent customer having multiple active payment (e.g: multiple VA number) for one order.
+        $params_hash = WC_Midtrans_API::getSnapParamsHash( $params );
+        $snapResponse = false;
+        if ( apply_filters( 'midtrans_reuse_active_snap_token', true, $order, $params )
+          && $order->get_meta('_mt_payment_snap_token') && $order->get_meta('_mt_payment_url')
+          && $order->get_meta('_mt_payment_snap_params_hash') === $params_hash
+          && WC_Midtrans_API::isSnapTokenActive( $order->get_meta('_mt_payment_snap_token'), $this->id )
+        ) {
+          $snapResponse = new stdClass();
+          $snapResponse->token = $order->get_meta('_mt_payment_snap_token');
+          $snapResponse->redirect_url = $order->get_meta('_mt_payment_url');
+        }
+        if ( ! $snapResponse ) {
+          try {
+            $snapResponse = WC_Midtrans_API::createSnapTransactionHandleDuplicate( $order, $params, $this->id );
+          } catch (Exception $e) {
+              $this->setLogError( $e->getMessage() );
+              WC_Midtrans_Utils::json_print_exception( $e, $this );
+            exit();
+          }
         }
 
         // If `enable_redirect` admin config used, snap redirect
@@ -149,6 +165,7 @@
         // Store snap token & snap redirect url to $order metadata
         $order->update_meta_data('_mt_payment_snap_token',$snapResponse->token);
         $order->update_meta_data('_mt_payment_url',$snapResponse->redirect_url);
+        $order->update_meta_data('_mt_payment_snap_params_hash',$params_hash);
         $order->save();
 
         // set wc order's finish_url on user's session cookie

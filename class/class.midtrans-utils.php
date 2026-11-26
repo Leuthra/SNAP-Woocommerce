@@ -50,12 +50,107 @@ class WC_Midtrans_Utils
   public static function json_print_exception ( $e, $depedency ) {
     $errorObj = array(
       'result' => "failure", 
-      'messages' => '<div class="woocommerce-error" role="alert"> Midtrans Exception: '.$e->getMessage().'. <br>Plugin Title: '.esc_html($depedency->method_title).'</div>',
+      // exception message may contain raw API response (which may contain user input), so it must be escaped
+      'messages' => '<div class="woocommerce-error" role="alert"> Midtrans Exception: '.esc_html($e->getMessage()).'. <br>Plugin Title: '.esc_html($depedency->method_title).'</div>',
       'refresh' => false, 
       'reload' => false
     );
-    $errorJson = json_encode($errorObj);
+    $errorJson = wp_json_encode($errorObj);
     echo $errorJson;
+  }
+
+  /**
+   * Check if a value have the format of Midtrans transaction_id / order_id.
+   * Used to validate ID that is coming from user input (URL params, etc)
+   * @param  mixed $id
+   * @return bool
+   */
+  public static function is_valid_midtrans_id( $id ) {
+    return is_string( $id ) && preg_match( '/^[A-Za-z0-9._~-]{1,64}$/', $id ) === 1;
+  }
+
+  /**
+   * Check if a value have the format of Snap token, anything else is not accepted
+   * @param  mixed $snap_token
+   * @return string the Snap token, empty string if invalid
+   */
+  public static function sanitize_snap_token( $snap_token ) {
+    return ( is_string( $snap_token ) && preg_match( '/^[A-Za-z0-9-]{1,64}$/', $snap_token ) === 1 )
+      ? $snap_token : '';
+  }
+
+  /**
+   * Get WC order ID from order_id used on Midtrans. Those are the same by default, but will be
+   * different when merchant customize the order_id sent to Midtrans (filter `midtrans_snap_order_id`,
+   * e.g: to use custom order number like `INV-0001`), and/or when the order_id is suffixed.
+   * @TAG: order-id-suffix-handling
+   * @param  mixed $midtrans_order_id order_id from Midtrans notification / API response
+   * @return mixed WC order ID. If no order is found, the original (unsuffixed) order_id is returned
+   */
+  public static function get_wc_order_id( $midtrans_order_id ) {
+    $original_order_id = self::check_and_restore_original_order_id( $midtrans_order_id );
+    if ( ! is_string( $original_order_id ) || $original_order_id === '' ) {
+      return $original_order_id;
+    }
+    // WC order ID is always numeric, anything else must be a custom order_id
+    if ( ! ctype_digit( $original_order_id ) || ! wc_get_order( $original_order_id ) || apply_filters( 'midtrans_always_lookup_custom_order_id', false ) ) {
+      $orders = wc_get_orders( array(
+        'limit'      => 1,
+        'return'     => 'ids',
+        'meta_key'   => '_mt_midtrans_order_id',
+        'meta_value' => $original_order_id,
+      ) );
+      if ( is_array( $orders ) && ! empty( $orders ) ) {
+        return (string) $orders[0];
+      }
+    }
+    return $original_order_id;
+  }
+
+  /**
+   * Get order_id that will be sent to Midtrans for a WC order. WC order ID by default,
+   * merchant can customize it using filter `midtrans_snap_order_id`.
+   * @param  mixed $order_id WC order ID
+   * @param  WC_Order $order
+   * @return string
+   */
+  public static function get_midtrans_order_id( $order_id, $order ) {
+    $midtrans_order_id = apply_filters( 'midtrans_snap_order_id', $order_id, $order );
+    // Midtrans order_id: max 50 chars, alphanumeric, dash, underscore, tilde, and dot.
+    // Leave room for the suffix that may be added to prevent duplicate order_id.
+    if ( ! is_scalar( $midtrans_order_id ) || preg_match( '/^[A-Za-z0-9._~-]{1,28}$/', (string) $midtrans_order_id ) !== 1
+      || strpos( (string) $midtrans_order_id, '-wc-mdtrs-' ) !== false
+    ) {
+      return (string) $order_id;
+    }
+    return (string) $midtrans_order_id;
+  }
+
+  /**
+   * Find WC order from Midtrans transaction_id, which is stored as order meta
+   * on notification handling. Works for both HPOS & legacy (post) order storage.
+   * @param  string $transaction_id
+   * @return WC_Order|bool false if not found
+   */
+  public static function get_order_by_transaction_id( $transaction_id ) {
+    if ( ! self::is_valid_midtrans_id( $transaction_id ) ) {
+      return false;
+    }
+    $queries = array(
+      // set when pending notification is received
+      array( 'meta_key' => '_mt_payment_transaction_id', 'meta_value' => $transaction_id ),
+      // set by WC when the payment is completed
+      array( 'transaction_id' => $transaction_id ),
+    );
+    foreach ( $queries as $query ) {
+      $orders = wc_get_orders( array_merge( array( 'limit' => 1 ), $query ) );
+      if ( is_array( $orders ) && ! empty( $orders ) && is_a( $orders[0], 'WC_Order' )
+        && in_array( $transaction_id, array( $orders[0]->get_transaction_id(), $orders[0]->get_meta( '_mt_payment_transaction_id' ) ), true )
+      ) {
+        return $orders[0];
+      }
+    }
+    return false;
   }
 
   /**
@@ -157,7 +252,7 @@ class WC_Midtrans_Utils
   public static function check_and_restore_original_order_id($non_duplicate_order_id){
     $suffix_separator = '-wc-mdtrs-';
     $original_order_id = $non_duplicate_order_id;
-    if(strpos($non_duplicate_order_id, $suffix_separator) !== false){
+    if(is_string($non_duplicate_order_id) && strpos($non_duplicate_order_id, $suffix_separator) !== false){
       $splitted_order_id_strings = explode($suffix_separator, $non_duplicate_order_id);
       // only return the left-side of the separator, ignore the rest
       $original_order_id = $splitted_order_id_strings[0];

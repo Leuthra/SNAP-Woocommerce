@@ -33,9 +33,16 @@
   
   // $order_items = array();
   // $cart = $woocommerce->cart;
-  $snap_token = sanitize_text_field($_GET['snap_token']);
-  $snap_token = esc_js( 
-    htmlspecialchars($snap_token, ENT_COMPAT,'ISO-8859-1', true) );
+  // Snap token from URL is user input, only accept the expected token format.
+  // Fallback to the token stored on the order when it's missing/invalid.
+  $snap_token = isset($_GET['snap_token']) 
+    ? WC_Midtrans_Utils::sanitize_snap_token(wp_unslash($_GET['snap_token'])) : '';
+  if ($snap_token === '') {
+    $current_order = wc_get_order($order_id);
+    $snap_token = $current_order 
+      ? WC_Midtrans_Utils::sanitize_snap_token($current_order->get_meta('_mt_payment_snap_token')) : '';
+  }
+  $snap_token = esc_js($snap_token);
 
   $is_production = $this->environment == 'production';
   $snap_api_base_url = $is_production ? 
@@ -43,8 +50,9 @@
   $snap_script_url = esc_attr($snap_api_base_url."/snap/snap.js");
   $snap_script_tag_id = esc_attr("snap-script");
   $client_key = esc_attr($this->client_key);
+  $client_key_js = esc_js($this->client_key);
 
-  $ganalytics_id = esc_attr($this->ganalytics_id);
+  $ganalytics_id = esc_js($this->ganalytics_id);
   $mixpanel_key_production = "17253088ed3a39b1e2bd2cbcfeca939a";
   $mixpanel_key_sandbox = "9dcba9b440c831d517e8ff1beff40bd9";
   $mixpanel_key = $is_production ? 
@@ -52,10 +60,11 @@
   $mixpanel_key = esc_js($mixpanel_key);
 
   $wp_base_url = home_url( '/' );
-  $plugin_backend_url = esc_url($wp_base_url."?wc-api=WC_Gateway_Midtrans");
-  $finish_url = $wp_base_url."?wc-api=WC_Gateway_Midtrans";
+  $plugin_backend_url = esc_js($wp_base_url."?wc-api=WC_Gateway_Midtrans");
+  $finish_url = $plugin_backend_url;
   $pending_url = $finish_url;
-  $error_url = $wp_base_url."?wc-api=WC_Gateway_Midtrans";
+  $error_url = $plugin_backend_url;
+  $snap_script_url_js = esc_js($snap_api_base_url."/snap/snap.js");
 
   $is_using_map_finish_url = 
     (isset($this->enable_map_finish_url) && $this->enable_map_finish_url == 'yes')?
@@ -79,9 +88,9 @@
 
     var wc_midtrans = {
       snap_token      : "$snap_token",
-      snap_script_url : "$snap_script_url",
+      snap_script_url : "$snap_script_url_js",
       snap_script_tag_id  : "$snap_script_tag_id",
-      client_key      : "$client_key",
+      client_key      : "$client_key_js",
       ganalytics_id   : "$ganalytics_id",
       mixpanel_key    : "$mixpanel_key",
       plugin_backend_url : "$plugin_backend_url",

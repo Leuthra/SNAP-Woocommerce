@@ -43,6 +43,10 @@ class SnapApiRequestor
      */
     public static function remoteCall($url, $server_key, $data_hash, $post = true)
     {
+        if (!is_string($server_key) || trim($server_key) === '') {
+            throw new \Exception('Midtrans Error: Server Key is empty, please set it on the Midtrans plugin configuration page');
+        }
+
         $ch = curl_init();
 
         $curl_options = array(
@@ -53,17 +57,18 @@ class SnapApiRequestor
             'Authorization: Basic ' . base64_encode($server_key . ':')
         ),
         CURLOPT_RETURNTRANSFER => 1,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT => 30,
         // CURLOPT_CAINFO => dirname(__FILE__) . "/../data/cacert.pem"
         );
 
         // merging with Config::$curlOptions
         if (count(Config::$curlOptions)) {
             // We need to combine headers manually, because it's array and it will no be merged
-            if (Config::$curlOptions[CURLOPT_HTTPHEADER]) {
+            $headerOptions = array();
+            if (!empty(Config::$curlOptions[CURLOPT_HTTPHEADER])) {
                 $mergedHeders = array_merge($curl_options[CURLOPT_HTTPHEADER], Config::$curlOptions[CURLOPT_HTTPHEADER]);
                 $headerOptions = array( CURLOPT_HTTPHEADER => $mergedHeders );
-            } else {
-                $mergedHeders = array();
             }
 
             $curl_options = array_replace_recursive($curl_options, Config::$curlOptions, $headerOptions);
@@ -95,17 +100,16 @@ class SnapApiRequestor
         if ($result === false) {
             throw new \Exception('CURL Error: ' . curl_error($ch), curl_errno($ch));
         } else {
-            try {
-                $result_array = json_decode($result);
-            } catch (\Exception $e) {
-                $message = "API Request Error unable to json_decode API response: ".$result . ' | Request url: '.$url;
-                throw new \Exception($message);
-            }
+            $result_array = json_decode($result);
             if ($info['http_code'] != 201) {
                 $message = 'Midtrans Error (' . $info['http_code'] . '): '
                     . $result . ' | Request url: '.$url;
                 throw new \Exception($message, $info['http_code']);
             } else {
+                // json_decode does not throw, it returns null on undecodable response
+                if (!is_object($result_array) || empty($result_array->token)) {
+                    throw new \Exception('Midtrans Error: unexpected Snap API response | Request url: '.$url);
+                }
                 return $result_array;
             }
         }

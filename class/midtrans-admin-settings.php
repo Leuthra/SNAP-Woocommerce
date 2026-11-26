@@ -61,6 +61,20 @@ return apply_filters(
             'default'       => '',
             'class'         => 'production_settings toggle-midtrans'
         ),
+        'signature_key_sandbox'       => array(
+            'title'         => __("Signature Key - Sandbox", 'midtrans-woocommerce'),
+            'type'          => 'text',
+            'description'   => sprintf(__('Input your <b>Sandbox</b> Midtrans Signature Key (may be labelled as "Signature Secret Key"), if your Midtrans account have it <a href="%s" target="_blank">here</a>. It is used to verify that payment notification is really sent by Midtrans. Leave it empty if your account only have Client Key & Server Key.', 'midtrans-woocommerce' ),$sandbox_key_url),
+            'default'       => '',
+            'class'         => 'sandbox_settings toggle-midtrans'
+        ),
+        'signature_key_production'     => array(
+            'title'         => __("Signature Key - Production", 'midtrans-woocommerce'),
+            'type'          => 'text',
+            'description'   => sprintf(__('Input your <b>Production</b> Midtrans Signature Key (may be labelled as "Signature Secret Key"), if your Midtrans account have it <a href="%s" target="_blank">here</a>. It is used to verify that payment notification is really sent by Midtrans. Leave it empty if your account only have Client Key & Server Key.', 'midtrans-woocommerce' ),$production_key_url),
+            'default'       => '',
+            'class'         => 'production_settings toggle-midtrans'
+        ),
         'notification_url_display'             => array(
             'title'         => __( 'Notification URL value', 'midtrans-woocommerce' ),
             'type'          => 'title',

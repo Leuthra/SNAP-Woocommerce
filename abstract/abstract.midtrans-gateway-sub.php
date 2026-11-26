@@ -97,7 +97,10 @@ abstract class WC_Gateway_Midtrans_Abstract_Sub extends WC_Gateway_Midtrans_Abst
     // pass through the real function from main gateway implementation, with options params
     return $main_gateway->process_payment_helper(
       $order_id, 
-      array('sub_payment_method_params' => $this->sub_payment_method_params)
+      array('sub_payment_method_params' => 
+        // allow merchant-defined custom filter function to modify Snap `enabled_payments` of this button
+        apply_filters( 'midtrans_sub_enabled_payments', $this->sub_payment_method_params, $this->id )
+      )
     );
   }
 

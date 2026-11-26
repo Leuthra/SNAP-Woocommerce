@@ -50,22 +50,28 @@ class Sanitizer
 
     private static function fieldCustomerDetails(&$field)
     {
-        $first_name = new self;
-        $field['first_name'] = $first_name
-            ->maxLength(20)
-            ->apply($field['first_name']);
+        if (isset($field['first_name'])) {
+            $first_name = new self;
+            $field['first_name'] = $first_name
+                ->maxLength(20)
+                ->apply($field['first_name']);
+        }
         if (isset($field['last_name'])) {
             $last_name = new self;
             $field['last_name'] = $last_name
                 ->maxLength(20)
                 ->apply($field['last_name']);
         }
-        $email = new self;
-        $field['email'] = $email
-            ->maxLength(45)
-            ->apply($field['email']);
+        if (isset($field['email'])) {
+            $email = new self;
+            $field['email'] = $email
+                ->maxLength(45)
+                ->apply($field['email']);
+        }
 
-        static::fieldPhone($field['phone']);
+        if (isset($field['phone'])) {
+            static::fieldPhone($field['phone']);
+        }
 
         if (!empty($field['billing_address']) || !empty($field['shipping_address'])) {
             $keys = array('billing_address', 'shipping_address');

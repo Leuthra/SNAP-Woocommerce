@@ -18,7 +18,7 @@ class Transaction
     public static function status($id, $payment_type = null)
     {
         return ApiRequestor::get(
-            Config::getBaseUrl() . '/' . $id . '/status',
+            Config::getBaseUrl() . '/' . self::encodeId($id) . '/status',
             Config::$serverKey,
             false,
             self::isOpenApi($payment_type)
@@ -35,7 +35,7 @@ class Transaction
     public static function approve($id)
     {
         return ApiRequestor::post(
-            Config::getBaseUrl() . '/' . $id . '/approve',
+            Config::getBaseUrl() . '/' . self::encodeId($id) . '/approve',
             Config::$serverKey,
             false
         )->status_code;
@@ -51,7 +51,7 @@ class Transaction
     public static function cancel($id)
     {
         return ApiRequestor::post(
-            Config::getBaseUrl() . '/' . $id . '/cancel',
+            Config::getBaseUrl() . '/' . self::encodeId($id) . '/cancel',
             Config::$serverKey,
             false
         )->status_code;
@@ -67,7 +67,7 @@ class Transaction
     public static function expire($id)
     {
         return ApiRequestor::post(
-            Config::getBaseUrl() . '/' . $id . '/expire',
+            Config::getBaseUrl() . '/' . self::encodeId($id) . '/expire',
             Config::$serverKey,
             false
         );
@@ -85,7 +85,7 @@ class Transaction
     public static function refund($id, $params, $payment_type = null)
     {
         return ApiRequestor::post(
-            Config::getBaseUrl() . '/' . $id . '/refund',
+            Config::getBaseUrl() . '/' . self::encodeId($id) . '/refund',
             Config::$serverKey,
             $params,
             self::isOpenApi($payment_type)
@@ -104,7 +104,7 @@ class Transaction
     public static function refundDirect($id, $params)
     {
         return ApiRequestor::post(
-            Config::getBaseUrl() . '/' . $id . '/refund/online/direct',
+            Config::getBaseUrl() . '/' . self::encodeId($id) . '/refund/online/direct',
             Config::$serverKey,
             $params
         );
@@ -121,7 +121,7 @@ class Transaction
     public static function deny($id)
     {
         return ApiRequestor::post(
-            Config::getBaseUrl() . '/' . $id . '/deny',
+            Config::getBaseUrl() . '/' . self::encodeId($id) . '/deny',
             Config::$serverKey,
             false
         );
@@ -129,7 +129,25 @@ class Transaction
 
     private static function isOpenApi($payment_type): bool
     {
-        return strtolower($payment_type) == "dana";
+        return is_string($payment_type) && strtolower($payment_type) == "dana";
+    }
+
+    /**
+     * Encode Order ID / transaction ID as a single URL path segment.
+     * The ID may originate from an HTTP request, so it must never be able to
+     * change the API path (e.g. `../`, `?`, `#`).
+     *
+     * @param string $id Order ID or transaction ID
+     *
+     * @return string
+     * @throws \Exception when the ID is empty or not a scalar value
+     */
+    private static function encodeId($id)
+    {
+        if (!is_scalar($id) || trim((string) $id) === '') {
+            throw new \Exception('Midtrans Error: invalid order ID or transaction ID');
+        }
+        return rawurlencode(trim((string) $id));
     }
 
 }

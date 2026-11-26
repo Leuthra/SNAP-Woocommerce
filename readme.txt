@@ -3,7 +3,7 @@ Contributors: yocki, rizdaprasetya
 Tags: midtrans, snap, payment, payment-gateway, credit-card, commerce, e-commerce, woocommerce, veritrans
 Requires at least: 3.9.1
 Tested up to: 6.6.1
-Stable tag: 2.32.3
+Stable tag: 2.33.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -71,6 +71,21 @@ The best way please email to support@midtrans.com, but bugs can be reported in o
 4. Configuration page
 
 == Changelog ==
+
+= 2.33.0 - 2026-11-26 =
+* security: fix unauthenticated Cross-Site Scripting (CVE-2026-39758). HTTP notification endpoint no longer print the request body back to the response, and always respond as plain text
+* security: verify `signature_key` of Midtrans HTTP notification. New config field "Signature Key" (for Midtrans account that have Signature Key separated from Server Key), when it is filled, notification with invalid signature is rejected. When it is empty, the notification is only accepted if Midtrans API confirms the transaction belongs to the order (can be disabled with filter `midtrans_verify_notification_signature`)
+* security: escape Midtrans API error message shown on checkout page, validate Snap token & transaction id coming from URL, encode transaction id on API url, prevent open redirect on finish url cookie
+* security: order is put on-hold (not completed) when the paid amount is less than the amount requested to Midtrans for that transaction (can be disabled with filter `midtrans_validate_notification_amount`)
+* fix Snap API error `customer_details.email format is invalid` when customer's email (or other customer field) is empty
+* fix order status not updated for DANA & BI-SNAP bank transfer (Danamon, BSI, SeaBank, Saqu VA)
+* fix paid order being cancelled/on-hold by notification of another abandoned transaction of the same order
+* respond HTTP 500 when transaction status can't be retrieved from Midtrans, so the notification will be retried
+* add separated payment buttons: DANA, Kredivo, CIMB VA, Danamon VA, BSI VA, SeaBank VA, Saqu VA
+* reuse Snap token that is still active when customer click pay again on the same order with the same payment method, instead of creating another transaction / VA number (can be disabled with filter `midtrans_reuse_active_snap_token`)
+* add filter `midtrans_snap_order_id` to use custom order number as Midtrans order_id, the WooCommerce order will still be found on notification
+* add filter `midtrans_sub_enabled_payments` to customize Snap `enabled_payments` of separated payment buttons
+* finish url page (BCA KlikPay) now compatible with WooCommerce HPOS order storage
 
 = 2.32.3 - 2024-08-15 =
 * add identifier to handle webhook, get transaction status, and refund using Dana
@@ -281,6 +296,21 @@ The best way please email to support@midtrans.com, but bugs can be reported in o
 * Fullpayment feature
 
 == Upgrade Notice ==
+
+= 2.33.0 - 2026-11-26 =
+* security: fix unauthenticated Cross-Site Scripting (CVE-2026-39758). HTTP notification endpoint no longer print the request body back to the response, and always respond as plain text
+* security: verify `signature_key` of Midtrans HTTP notification. New config field "Signature Key" (for Midtrans account that have Signature Key separated from Server Key), when it is filled, notification with invalid signature is rejected. When it is empty, the notification is only accepted if Midtrans API confirms the transaction belongs to the order (can be disabled with filter `midtrans_verify_notification_signature`)
+* security: escape Midtrans API error message shown on checkout page, validate Snap token & transaction id coming from URL, encode transaction id on API url, prevent open redirect on finish url cookie
+* security: order is put on-hold (not completed) when the paid amount is less than the amount requested to Midtrans for that transaction (can be disabled with filter `midtrans_validate_notification_amount`)
+* fix Snap API error `customer_details.email format is invalid` when customer's email (or other customer field) is empty
+* fix order status not updated for DANA & BI-SNAP bank transfer (Danamon, BSI, SeaBank, Saqu VA)
+* fix paid order being cancelled/on-hold by notification of another abandoned transaction of the same order
+* respond HTTP 500 when transaction status can't be retrieved from Midtrans, so the notification will be retried
+* add separated payment buttons: DANA, Kredivo, CIMB VA, Danamon VA, BSI VA, SeaBank VA, Saqu VA
+* reuse Snap token that is still active when customer click pay again on the same order with the same payment method, instead of creating another transaction / VA number (can be disabled with filter `midtrans_reuse_active_snap_token`)
+* add filter `midtrans_snap_order_id` to use custom order number as Midtrans order_id, the WooCommerce order will still be found on notification
+* add filter `midtrans_sub_enabled_payments` to customize Snap `enabled_payments` of separated payment buttons
+* finish url page (BCA KlikPay) now compatible with WooCommerce HPOS order storage
 
 = 2.32.3 - 2024-08-15 =
 * add identifier to handle webhook, get transaction status, and refund using Dana

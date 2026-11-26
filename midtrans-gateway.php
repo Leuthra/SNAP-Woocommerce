@@ -1,9 +1,10 @@
 <?php
 /*
 Plugin Name: Midtrans - WooCommerce Payment Gateway
-Plugin URI: https://github.com/veritrans/SNAP-Woocommerce
+Plugin URI: https://github.com/Leuthra/SNAP-Woocommerce
+Update URI: https://github.com/Leuthra/SNAP-Woocommerce
 Description: Accept all payment directly on your WooCommerce site in a seamless and secure checkout environment with <a  target="_blank" href="https://midtrans.com/">Midtrans</a>
-Version: 2.32.3
+Version: 2.33.0
 Author: Midtrans
 Author URI: http://midtrans.co.id
 License: GPLv2 or later
@@ -99,6 +100,13 @@ function midtrans_gateway_init() {
   require_once dirname( __FILE__ ) . '/class/sub-specific-buttons/class.midtrans-gateway-sub-danamon-online.php';
   require_once dirname( __FILE__ ) . '/class/sub-specific-buttons/class.midtrans-gateway-sub-alfamart.php';
   require_once dirname( __FILE__ ) . '/class/sub-specific-buttons/class.midtrans-gateway-sub-indomaret.php';
+  require_once dirname( __FILE__ ) . '/class/sub-specific-buttons/class.midtrans-gateway-sub-dana.php';
+  require_once dirname( __FILE__ ) . '/class/sub-specific-buttons/class.midtrans-gateway-sub-kredivo.php';
+  require_once dirname( __FILE__ ) . '/class/sub-specific-buttons/class.midtrans-gateway-sub-cimb-va.php';
+  require_once dirname( __FILE__ ) . '/class/sub-specific-buttons/class.midtrans-gateway-sub-danamon-va.php';
+  require_once dirname( __FILE__ ) . '/class/sub-specific-buttons/class.midtrans-gateway-sub-bsi-va.php';
+  require_once dirname( __FILE__ ) . '/class/sub-specific-buttons/class.midtrans-gateway-sub-seabank-va.php';
+  require_once dirname( __FILE__ ) . '/class/sub-specific-buttons/class.midtrans-gateway-sub-saqu-va.php';
 
   // Add this payment method if WooCommerce Subscriptions plugin activated
   if( class_exists( 'WC_Subscriptions' ) ) {
@@ -138,6 +146,13 @@ function midtrans_add_payment_gateway( $methods ) {
   $methods[] = 'WC_Gateway_Midtrans_Sub_Danamon_Online';
   $methods[] = 'WC_Gateway_Midtrans_Sub_Alfamart';
   $methods[] = 'WC_Gateway_Midtrans_Sub_Indomaret';
+  $methods[] = 'WC_Gateway_Midtrans_Sub_Dana';
+  $methods[] = 'WC_Gateway_Midtrans_Sub_Kredivo';
+  $methods[] = 'WC_Gateway_Midtrans_Sub_CIMB_VA';
+  $methods[] = 'WC_Gateway_Midtrans_Sub_Danamon_VA';
+  $methods[] = 'WC_Gateway_Midtrans_Sub_BSI_VA';
+  $methods[] = 'WC_Gateway_Midtrans_Sub_Seabank_VA';
+  $methods[] = 'WC_Gateway_Midtrans_Sub_Saqu_VA';
   // additional gateways
   $methods[] = 'WC_Gateway_Midtrans_Installment';
   $methods[] = 'WC_Gateway_Midtrans_InstallmentOff';
@@ -157,7 +172,8 @@ function midtrans_add_payment_gateway( $methods ) {
  */
 function midtrans_handle_finish_url_page()
 {
-  if(is_page('midtrans-payment-finish')){ 
+  // the page template use WC & this plugin's classes, skip if those are not loaded
+  if(is_page('midtrans-payment-finish') && class_exists('WC_Midtrans_API')){ 
     include(dirname(__FILE__) . '/class/finish-url-page.php');
     die();
   }
