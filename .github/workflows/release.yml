@@ -1,0 +1,60 @@
+name: Release
+
+# Build the installable plugin zip and publish a GitHub release when a version tag is pushed.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tag matches plugin version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          header="$(sed -n 's/^Version:[[:space:]]*//p' midtrans-gateway.php | head -n1)"
+          stable="$(sed -n 's/^Stable tag:[[:space:]]*//p' readme.txt | head -n1)"
+          if [ "$version" != "$header" ] || [ "$version" != "$stable" ]; then
+            echo "Tag $version does not match plugin header ($header) or readme.txt stable tag ($stable)" >&2
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Lint PHP
+        run: find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l > /dev/null
+
+      - name: Build plugin zip
+        run: |
+          # .gitattributes export-ignore keeps development files out of the archive
+          git archive --format=zip --prefix=midtrans-woocommerce/ \
+            -o "midtrans-woocommerce-$VERSION.zip" "$GITHUB_REF_NAME"
+
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          awk -v v="$VERSION" '
+            index($0, "## [" v "]") == 1 { found = 1; next }
+            found && /^## \[/ { exit }
+            found && /^\[[^]]+\]: / { next }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          {
+            echo
+            echo "Install: download \`midtrans-woocommerce-$VERSION.zip\` below (not the \"Source code\" archives), then upload it in WordPress admin > Plugins > Add New > Upload Plugin."
+          } >> notes.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "midtrans-woocommerce-$VERSION.zip" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "midtrans-woocommerce-$VERSION.zip" \
+              --title "v$VERSION" --notes-file notes.md
+          fi
