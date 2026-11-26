@@ -1,0 +1,8 @@
+# Files left out of release archives
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/.github export-ignore
+/MAINTAINING.md export-ignore
+/SECURITY.md export-ignore
+/lib/midtrans/phpunit.xml export-ignore
+/lib/midtrans/composer.json export-ignore

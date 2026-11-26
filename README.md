@@ -4,7 +4,19 @@ Midtrans&nbsp; WooCommerce - Wordpress Payment Gateway Module
 Midtrans&nbsp; :heart: WooCommerce!
 Receive online payment on your WooCommerce store with Midtrans payment gateway integration plugin.
 
-Also [Available on Wordpress plugin store](https://wordpress.org/plugins/midtrans-woocommerce/)
+> **About this fork.** This is a community-maintained fork of the official
+> [veritrans/SNAP-Woocommerce](https://github.com/veritrans/SNAP-Woocommerce) plugin. It exists because
+> version 2.32.3, the latest official release, is affected by **CVE-2026-39758** (unauthenticated XSS) and
+> has not been patched upstream. It is not an official Midtrans release. See [CHANGELOG.md](CHANGELOG.md)
+> for what changed and [SECURITY.md](SECURITY.md) to report a vulnerability.
+
+### Install this fork
+
+1. Download `midtrans-woocommerce-x.y.z.zip` from the [latest release](https://github.com/Leuthra/SNAP-Woocommerce/releases/latest) (not the "Source code" archives).
+2. In WordPress admin open **Plugins > Add New > Upload Plugin**, choose the zip, then activate. It replaces the official plugin in place and keeps your existing settings.
+3. Open **WooCommerce > Settings > Payments > Midtrans**. If your Midtrans dashboard shows a **Signature Key** (Signature Secret Key), fill it in the **Signature Key** field so payment notifications are verified.
+
+Updates are not delivered through the WordPress plugin store; install new releases from this repository the same way.
 
 ### Description
 
@@ -33,9 +45,9 @@ Payment Method Feature:
 
 #### Minimum Requirements
 
-* WordPress v3.9 or greater (tested up to v6.x)
-* WooCommerce v2 or greater (tested up to v9.1.2)
-* PHP version v5.4 or greater
+* WordPress (tested up to v7.1)
+* WooCommerce v3 or greater (tested up to v11.3, with HPOS)
+* PHP version v7.4 or greater (tested on v8.3)
 * MySQL version v5.0 or greater
 * PHP CURL enabled server/host
 
@@ -145,6 +157,16 @@ This plugin have few available [WP hooks](https://developer.wordpress.org/plugin
 	- For if you want to perform action/update WC Order object when the payment is declared as complete upon Midtrans notification received.
 - action: `midtrans_on_notification_received` (2 params)
 	- For if you want to perform action/update WC Order object upon Midtrans notification received.
+- filter: `midtrans_snap_order_id` (2 params: `$order_id`, `$order`)
+	- For if you want to send a custom order number (e.g. `INV-0001`) to Midtrans as `order_id`. Allowed characters: letters, numbers, dash, underscore, tilde and dot, max 28 characters. The WooCommerce order is still found when the notification arrives.
+- filter: `midtrans_sub_enabled_payments` (2 params: `$enabled_payments`, `$gateway_id`)
+	- For if you want to modify Snap `enabled_payments` of a separated payment button.
+- filter: `midtrans_reuse_active_snap_token` (3 params: `$reuse`, `$order`, `$params`)
+	- Return `false` to always create a new Snap transaction when the customer pays again for the same order.
+- filter: `midtrans_verify_notification_signature` (3 params: `$verify`, `$raw_notification`, `$plugin_id`)
+	- Return `false` to skip `signature_key` verification of notifications. Not recommended.
+- filter: `midtrans_validate_notification_amount` (3 params: `$validate`, `$order`, `$midtrans_notification`)
+	- Return `false` to skip the paid amount check, e.g. if you use promos configured on Midtrans dashboard that reduce the paid amount.
 - filter: `midtrans_gateway_icon_before_render` (1 params)
 	- For if you want to modify payment icons HTML image tag.
 - action: `midtrans-handle-valid-notification` (1 params)

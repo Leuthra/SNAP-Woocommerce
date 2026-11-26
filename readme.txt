@@ -2,8 +2,9 @@
 Contributors: yocki, rizdaprasetya
 Tags: midtrans, snap, payment, payment-gateway, credit-card, commerce, e-commerce, woocommerce, veritrans
 Requires at least: 3.9.1
-Tested up to: 6.6.1
-Stable tag: 2.33.0
+Tested up to: 7.1
+Requires PHP: 7.4
+Stable tag: 2.33.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -71,6 +72,10 @@ The best way please email to support@midtrans.com, but bugs can be reported in o
 4. Configuration page
 
 == Changelog ==
+
+= 2.33.1 - 2026-11-26 =
+* update plugin headers: tested with WordPress 7.1 & WooCommerce 11.3, require PHP 7.4 and WooCommerce plugin
+* documentation: add CHANGELOG.md, SECURITY.md, fork notice and installation guide
 
 = 2.33.0 - 2026-11-26 =
 * security: fix unauthenticated Cross-Site Scripting (CVE-2026-39758). HTTP notification endpoint no longer print the request body back to the response, and always respond as plain text
@@ -296,6 +301,10 @@ The best way please email to support@midtrans.com, but bugs can be reported in o
 * Fullpayment feature
 
 == Upgrade Notice ==
+
+= 2.33.1 - 2026-11-26 =
+* update plugin headers: tested with WordPress 7.1 & WooCommerce 11.3, require PHP 7.4 and WooCommerce plugin
+* documentation: add CHANGELOG.md, SECURITY.md, fork notice and installation guide
 
 = 2.33.0 - 2026-11-26 =
 * security: fix unauthenticated Cross-Site Scripting (CVE-2026-39758). HTTP notification endpoint no longer print the request body back to the response, and always respond as plain text
